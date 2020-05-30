@@ -1,0 +1,28 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Easy File Dialog",
+	"Description": "An easy file dialog system",
+	"Category": "File",
+	"CreatedBy": "Firefly Studio",
+	"CreatedByURL": "http://www.fire-fly.studio",
+	"DocsURL": "",
+	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/bcf64fe2e00c48189d8385a9c39b6e61",
+	"SupportURL": "http://www.fire-fly.studio",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"EngineVersion": "4.24.0",
+	"Modules": [
+		{
+			"Name": "EasyFileDialog",
+			"Type": "Runtime",
+			"LoadingPhase": "PreLoadingScreen",
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		}
+	]
+}
