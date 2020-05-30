@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 1,
-	"VersionName": "1.0",
+	"Version": 2,
+	"VersionName": "2.0",
 	"FriendlyName": "Easy File Dialog",
 	"Description": "An easy file dialog system",
 	"Category": "File",
@@ -14,7 +14,7 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
-	"EngineVersion": "4.24.0",
+	"EngineVersion": "4.25.0",
 	"Modules": [
 		{
 			"Name": "EasyFileDialog",
