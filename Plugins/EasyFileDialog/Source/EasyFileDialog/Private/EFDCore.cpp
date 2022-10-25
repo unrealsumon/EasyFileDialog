@@ -9,6 +9,17 @@
 #include <Runtime\Core\Public\Misc\Paths.h>
 #include <Runtime\Core\Public\Windows\COMPointer.h>
 
+#if PLATFORM_MAC
+#include "Mac/DesktopPlatformMac.h"
+#include <Runtime\ApplicationCore\Public\Mac\MacApplication.h>
+#include<Runtime\Core\Public\Misc\FeedbackContextMarkup.h>
+#include <Runtime\Core\Public\Mac\CocoaThread.h>
+#endif
+
+//#include "Misc/ConfigCacheIni.h"
+//#include "Misc/Guid.h"
+
+
 
 #define MAX_FILETYPES_STR 4096
 #define MAX_FILENAME_STR 65536 // This buffer has to be big enough to contain the names of all the selected files as well as the null characters between them and the null character at the end
@@ -198,6 +209,133 @@ bool EFDCore::FileDialogShared(bool bSave, const void* ParentWindowHandle, const
 			//UE_LOG(LogDesktopPlatform, Warning, TEXT("Error reading results of file dialog. Error: 0x%04X"), Error);
 		}
 	}
+
+	return bSuccess;
+#endif
+#pragma endregion
+
+#pragma region Mac
+#if PLATFORM_MAC
+	MacApplication->SetCapture(NULL);
+
+	bool bSuccess = false;
+	{
+		FMacScopedSystemModalMode SystemModalScope;
+		bSuccess = MainThreadReturn(^ {
+			SCOPED_AUTORELEASE_POOL;
+			FCocoaScopeContext ContextGuard;
+
+			NSSavePanel * Panel = bSave ? [NSSavePanel savePanel] : [NSOpenPanel openPanel] ;
+
+			if (!bSave)
+			{
+				NSOpenPanel* OpenPanel = (NSOpenPanel*)Panel;
+				[OpenPanel setCanChooseFiles : true] ;
+				[OpenPanel setCanChooseDirectories : false] ;
+				[OpenPanel setAllowsMultipleSelection : Flags & EFileDialogFlags::Multiple] ;
+			}
+
+			[Panel setCanCreateDirectories : bSave];
+
+			CFStringRef Title = FPlatformString::TCHARToCFString(*DialogTitle);
+			[Panel setTitle : (NSString*)Title] ;
+			CFRelease(Title);
+
+			CFStringRef DefaultPathCFString = FPlatformString::TCHARToCFString(*DefaultPath);
+			NSURL* DefaultPathURL = [NSURL fileURLWithPath : (NSString*)DefaultPathCFString];
+
+			if (bSave)
+			{
+				// If pointing to a file then remove file from the path - Save Panel is expecting a directory URL
+				// Works round crash in Catalina and error messages in Big Sur
+				NSNumber* isDirectoryKey;
+				if ([DefaultPathURL getResourceValue : &isDirectoryKey forKey : NSURLIsDirectoryKey error : nil] == NO || [isDirectoryKey boolValue] == NO)
+				{
+					DefaultPathURL = [DefaultPathURL URLByDeletingLastPathComponent];
+				}
+			}
+
+			[Panel setDirectoryURL : DefaultPathURL];
+			CFRelease(DefaultPathCFString);
+
+			CFStringRef FileNameCFString = FPlatformString::TCHARToCFString(*DefaultFile);
+			[Panel setNameFieldStringValue : (NSString*)FileNameCFString] ;
+			CFRelease(FileNameCFString);
+
+			FFileDialogAccessoryView* AccessoryView = [[FFileDialogAccessoryView alloc]initWithFrame:NSMakeRect(0.0, 0.0, 250.0, 85.0) dialogPanel : Panel];
+			[Panel setAccessoryView : AccessoryView] ;
+
+			TArray<FString> FileTypesArray;
+			int32 NumFileTypes = FileTypes.ParseIntoArray(FileTypesArray, TEXT("|"), true);
+
+			NSMutableArray* AllowedFileTypes = [NSMutableArray arrayWithCapacity : NumFileTypes];
+
+			if (NumFileTypes > 0)
+			{
+				for (int32 Index = 0; Index < NumFileTypes; ++Index)
+				{
+					CFStringRef Type = FPlatformString::TCHARToCFString(*FileTypesArray[Index]);
+					[AllowedFileTypes addObject : (NSString*)Type] ;
+					CFRelease(Type);
+				}
+			}
+
+			if ([AllowedFileTypes count] == 1)
+			{
+				[AllowedFileTypes addObject : @""] ;
+			}
+
+			[AccessoryView AddAllowedFileTypes : AllowedFileTypes];
+
+			bool bOkPressed = false;
+			NSWindow* FocusWindow = [[NSApplication sharedApplication]keyWindow];
+
+			NSInteger Result = [Panel runModal];
+			[AccessoryView release] ;
+
+			if (Result == NSModalResponseOK)
+			{
+				if (bSave)
+				{
+					TCHAR FilePath[MAC_MAX_PATH];
+					FPlatformString::CFStringToTCHAR((CFStringRef) [[Panel URL]path], FilePath);
+					new(OutFilenames) FString(FilePath);
+				}
+				else
+				{
+					NSOpenPanel* OpenPanel = (NSOpenPanel*)Panel;
+					for (NSURL* FileURL in[OpenPanel URLs])
+					{
+						TCHAR FilePath[MAC_MAX_PATH];
+						FPlatformString::CFStringToTCHAR((CFStringRef)[FileURL path], FilePath);
+						new(OutFilenames) FString(FilePath);
+					}
+					OutFilterIndex = [AccessoryView SelectedExtension];
+				}
+
+				// Make sure all filenames gathered have their paths normalized
+				for (auto OutFilenameIt = OutFilenames.CreateIterator(); OutFilenameIt; ++OutFilenameIt)
+				{
+					FString& OutFilename = *OutFilenameIt;
+					OutFilename = IFileManager::Get().ConvertToRelativePath(*OutFilename);
+					FPaths::NormalizeFilename(OutFilename);
+				}
+
+				bOkPressed = true;
+			}
+
+			[Panel close];
+
+			if (FocusWindow)
+			{
+				[FocusWindow makeKeyWindow] ;
+			}
+
+			return bOkPressed;
+	});
+	}
+
+	MacApplication->ResetModifierKeys();
 
 	return bSuccess;
 #endif
