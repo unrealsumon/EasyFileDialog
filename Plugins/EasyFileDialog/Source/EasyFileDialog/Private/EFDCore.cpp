@@ -3,11 +3,19 @@
 
 #include "EFDCore.h"
 
-#include "shlobj.h" 
+// Windows-specific headers
+#pragma region Windows
+#if PLATFORM_WINDOWS
 
+#include "shlobj.h" 
+#include <Runtime\Core\Public\Windows\COMPointer.h>
+
+#endif
+#pragma endregion
+
+// Common headers
 #include <Runtime\Core\Public\HAL\FileManager.h>
 #include <Runtime\Core\Public\Misc\Paths.h>
-#include <Runtime\Core\Public\Windows\COMPointer.h>
 
 
 #define MAX_FILETYPES_STR 4096
@@ -213,6 +221,8 @@ bool EFDCore::FileDialogShared(bool bSave, const void* ParentWindowHandle, const
 
 bool EFDCore:: OpenFolderDialogInner(const void* ParentWindowHandle, const FString& DialogTitle, const FString& DefaultPath, FString& OutFolderName)
 {
+#pragma region Windows
+#if PLATFORM_WINDOWS	
 	//FScopedSystemModalMode SystemModalScope;
 
 	bool bSuccess = false;
@@ -263,4 +273,9 @@ bool EFDCore:: OpenFolderDialogInner(const void* ParentWindowHandle, const FStri
 	}
 
 	return bSuccess;
+	
+#endif
+#pragma endregion
+	
+	return false;
 }
