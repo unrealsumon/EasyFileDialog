@@ -3,6 +3,9 @@
 #pragma once
 #pragma warning(disable : 4668)
 
+#include "CoreMinimal.h"
+#include "EFDCore.generated.h"
+
 // Flag Enum for saving multiple or single file's
 UENUM(BlueprintType)
 enum EEasyFileDialogFlags
@@ -10,8 +13,6 @@ enum EEasyFileDialogFlags
 	Single = 0x00, // No flags
 	Multiple = 0x01  // Allow multiple file selections
 };
-
-#include "CoreMinimal.h"
 
 /**
  * 
