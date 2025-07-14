@@ -1,23 +1,27 @@
 // Copyright 2017-2020 Firefly Studio. All Rights Reserved.
-
-
 #include "EFDCore.h"
+#include "combaseapi.h"
+#include "commdlg.h"
+#include "Containers/Array.h"
+#include <HAL/FileManager.h>
+#include "HAL/Platform.h"
+#include "HAL/UnrealMemory.h"
+#include <Microsoft/COMPointer.h>
+#include "Misc/CoreMiscDefines.h"
+#include "Misc/CString.h"
+#include <Misc/Paths.h>
+#include "ShObjIdl_core.h"
+#include "Windows.h"
+#include "WTypesbase.h"
 
-#include "shlobj.h" 
-
-#include <Runtime\Core\Public\HAL\FileManager.h>
-#include <Runtime\Core\Public\Misc\Paths.h>
-#include <Runtime\Core\Public\Windows\COMPointer.h>
-
-
-#define MAX_FILETYPES_STR 4096
-#define MAX_FILENAME_STR 65536 // This buffer has to be big enough to contain the names of all the selected files as well as the null characters between them and the null character at the end
+constexpr auto MAX_FILETYPES_STR{ 4096u };
+constexpr auto MAX_FILENAME_STR{ 65536u }; // This buffer has to be big enough to contain the names of all the selected files as well as the null characters between them and the null character at the end
 
 bool EFDCore::OpenFileDialogCore(const FString& DialogTitle, const FString& DefaultPath, const FString& DefaultFile, const FString& FileTypes, uint32 Flags, TArray< FString >& OutFilenames)
 {
 	// Calling the FileDialogShared function using save parameter with false. 
-	int OutFilterIndex=0;
-	return FileDialogShared(false, nullptr, DialogTitle, DefaultPath, DefaultFile, FileTypes, Flags, OutFilenames,OutFilterIndex);
+	int OutFilterIndex = 0;
+	return FileDialogShared(false, nullptr, DialogTitle, DefaultPath, DefaultFile, FileTypes, Flags, OutFilenames, OutFilterIndex);
 }
 
 bool EFDCore::SaveFileDialogCore(const FString& DialogTitle, const FString& DefaultPath, const FString& DefaultFile, const FString& FileTypes, uint32 Flags, TArray< FString >& OutFilenames)
@@ -39,11 +43,11 @@ bool EFDCore::FileDialogShared(bool bSave, const void* ParentWindowHandle, const
 	//FScopedSystemModalMode SystemModalScope;
 #if PLATFORM_WINDOWS
 	WCHAR Filename[MAX_FILENAME_STR];
-	FCString::Strcpy(Filename, MAX_FILENAME_STR, *(DefaultFile.Replace(TEXT("/"), TEXT("\\"))));
+	FCString::Strncpy(Filename, *(DefaultFile.Replace(TEXT("/"), TEXT("\\"))), MAX_FILENAME_STR);
 
 	// Convert the forward slashes in the path name to backslashes, otherwise it'll be ignored as invalid and use whatever is cached in the registry
 	WCHAR Pathname[MAX_FILENAME_STR];
-	FCString::Strcpy(Pathname, MAX_FILENAME_STR, *(FPaths::ConvertRelativePathToFull(DefaultPath).Replace(TEXT("/"), TEXT("\\"))));
+	FCString::Strncpy(Pathname, *(FPaths::ConvertRelativePathToFull(DefaultPath).Replace(TEXT("/"), TEXT("\\"))), MAX_FILENAME_STR);
 
 	// Convert the "|" delimited list of filetypes to NULL delimited then add a second NULL character to indicate the end of the list
 	WCHAR FileTypeStr[MAX_FILETYPES_STR];
@@ -73,7 +77,7 @@ bool EFDCore::FileDialogShared(bool bSave, const void* ParentWindowHandle, const
 	if (FileTypesLen > 0 && FileTypesLen - 1 < MAX_FILETYPES_STR)
 	{
 		FileTypesPtr = FileTypeStr;
-		FCString::Strcpy(FileTypeStr, MAX_FILETYPES_STR, *FileTypes);
+		FCString::Strncpy(FileTypeStr, *FileTypes, MAX_FILETYPES_STR);
 
 		TCHAR* Pos = FileTypeStr;
 		while (Pos[0] != 0)
@@ -211,7 +215,7 @@ bool EFDCore::FileDialogShared(bool bSave, const void* ParentWindowHandle, const
 	return false;
 }
 
-bool EFDCore:: OpenFolderDialogInner(const void* ParentWindowHandle, const FString& DialogTitle, const FString& DefaultPath, FString& OutFolderName)
+bool EFDCore::OpenFolderDialogInner(const void* ParentWindowHandle, const FString& DialogTitle, const FString& DefaultPath, FString& OutFolderName)
 {
 	//FScopedSystemModalMode SystemModalScope;
 
